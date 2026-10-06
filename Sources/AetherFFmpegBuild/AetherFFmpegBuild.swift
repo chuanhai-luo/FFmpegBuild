@@ -5,8 +5,8 @@
 // together with the required system frameworks (VideoToolbox, AudioToolbox, etc).
 //
 // The xcframeworks are built by build.sh from FFmpeg source with a
-// minimal configuration: only demuxing + decoding, no network/TLS,
-// no encoders, no filters, no programs.
+// minimal configuration: no network/TLS or programs. Magpie's iOS slices
+// additionally include the VideoToolbox H.264 and AAC encoders.
 //
 // The Aether prefix is what lets this build coexist with another FFmpeg in
 // the same app (FFmpegKit, MobileVLCKit, mpv): SwiftPM target names and

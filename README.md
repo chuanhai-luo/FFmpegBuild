@@ -2,7 +2,7 @@
 
 <p align="center">
   <b>Slim FFmpeg xcframeworks for Apple platforms.</b><br>
-  Demux, decode, and a thin HLS-fMP4 mux path for AVPlayer bridging. No network stack, no CLI binaries.
+  Demux, decode, selected encoders, and a thin HLS-fMP4 mux path for AVPlayer bridging. No network stack, no CLI binaries.
 </p>
 
 <p align="center">
@@ -28,11 +28,11 @@ Full FFmpeg builds for iOS land at 40-70 MB because they bundle a TLS stack, enc
 | Library        | What it does                                          |
 | -------------- | ----------------------------------------------------- |
 | libavformat    | Demux MKV, MP4, WebM, MPEG-TS, MPEG-PS (VOB / DVD), HLS, AVI, ASF / WMV, OGG, FLV, plus raw elementary streams (including DTS, TrueHD and LATM AAC) |
-| libavcodec     | Decode video + audio (with VideoToolbox bridge)       |
+| libavcodec     | Decode video + audio (with VideoToolbox bridge), plus H.264 VideoToolbox / AAC encoders for Magpie's iOS WebM transcode |
 | libavutil      | Shared primitives                                     |
 | libswresample  | Audio resampling / channel remap / format convert     |
 | libswscale     | Pixel-format convert (YUV → NV12 / P010) for the SW-decode path |
-| libavfilter    | Trimmed filter set: zscale + tonemap + colorspace for HDR → SDR still extraction, bwdif + yadif for CPU deinterlacing on the SW-decode path, yadif_videotoolbox + hwupload for GPU (Metal) deinterlacing of VideoToolbox frames |
+| libavfilter    | Trimmed filter set: zscale + tonemap + colorspace for HDR → SDR still extraction, bwdif + yadif for CPU deinterlacing on the SW-decode path |
 | **dav1d**      | Fast AV1 software decoder (separate xcframework)      |
 | **zimg**       | zscale's resampling / colorspace backend (separate xcframework, link-only) |
 | **libzvbi**    | DVB teletext decoder backend for `libzvbi_teletext` (separate xcframework, link-only) |
@@ -42,10 +42,10 @@ Full FFmpeg builds for iOS land at 40-70 MB because they bundle a TLS stack, enc
 Anything the app layer should already handle or doesn't need:
 
 - Network / TLS: FFmpeg reads from an `avio_alloc_context` callback, you wire `URLSession` to it
-- Encoders, except FLAC and EAC3 (kept for the audio bridge that re-encodes non-streamable sources like TrueHD / DTS / DTS-HD MA. FLAC for the lossless 7.1 path, EAC3 5.1 for the default soundbar-compat path that surfaces surround via HDMI bitstream tunnel)
+- Other encoders beyond H.264 VideoToolbox, AAC, FLAC and EAC3 (the latter two are kept for the audio bridge that re-encodes non-streamable sources like TrueHD / DTS / DTS-HD MA)
 - Muxers, except MP4 / MOV / HLS (kept for the HLS-fMP4 producer that wraps streams for AVPlayer)
 - libavdevice (libavfilter is included but trimmed to a handful of filters, see In)
-- Most filters: libavfilter ships only buffer / buffersink / format / scale / zscale / tonemap / colorspace / bwdif / yadif / yadif_videotoolbox / hwupload
+- Most filters: libavfilter ships only buffer / buffersink / format / scale / zscale / tonemap / colorspace / bwdif / yadif
 - Programs (`ffmpeg`, `ffplay`, `ffprobe`)
 - Hardware accel layers other than VideoToolbox
 - Text subtitle rendering (do that in SwiftUI)
@@ -62,6 +62,8 @@ Anything the app layer should already handle or doesn't need:
 Needs Xcode 16+ and roughly 10-30 minutes depending on your machine. All sources (FFmpeg, dav1d, zimg, libzvbi) clone on first run.
 
 Output lands in `Sources/` as xcframeworks, ready to consume via Swift Package Manager. The shipped xcframeworks contain **dynamic frameworks** (dylib-in-framework, `@rpath` install names); Xcode embeds and signs them in the app bundle automatically when you link the package. That is what keeps the LGPL relink requirement satisfiable for closed-source apps, see License below.
+
+Magpie's checked-in iOS device and arm64 Simulator slices are built with the H.264 VideoToolbox and AAC encoders enabled. The x86_64 Simulator slice remains the upstream build. The build script keeps its all-platform packaging matrix, enables these encoders for rebuilt slices, and omits the Metal deinterlace filters.
 
 ## Use
 

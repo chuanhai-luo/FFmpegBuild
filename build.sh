@@ -596,17 +596,7 @@ COMMON_FLAGS=(
     # routes software too). Without these it all renders with combing. bwdif
     # is the CPU primary (better quality), yadif the fallback.
     --enable-filter=bwdif --enable-filter=yadif
-    # Hardware deinterlacer: yadif_videotoolbox runs the yadif kernel as a
-    # Metal compute shader over AV_PIX_FMT_VIDEOTOOLBOX frames (no
-    # bwdif_videotoolbox exists upstream). hwupload bridges software-decoded
-    # frames into a VideoToolbox hwframes context so the GPU can deinterlace
-    # at field rate (mode=send_field) without the 2x CPU cost of sw bwdif.
-    # The dependency chain is "metal corevideo videotoolbox"; Metal is
-    # normally autodetected but --disable-autodetect turns it off, so enable
-    # it explicitly. The .metal kernel compiles at build time via
-    # --metalcc / --metallib, overridden per slice in build_one.
-    --enable-filter=yadif_videotoolbox --enable-filter=hwupload
-    --enable-metal
+    # Magpie does not build the GPU deinterlace filters: Xcode 27 omits metallib.
     --enable-videotoolbox --enable-audiotoolbox
     --enable-libdav1d
     --enable-protocol=file --enable-protocol=pipe --enable-protocol=data
@@ -802,6 +792,8 @@ COMMON_FLAGS=(
     # tvOS doesn't expose LPCM-side audio passthrough that the
     # lossless was actually delivering on most setups anyway.
     --enable-encoder=eac3
+    # Magpie transcodes WebM to an AVPlayer-compatible MP4 using these encoders.
+    --enable-encoder=h264_videotoolbox --enable-encoder=aac
 )
 
 build_one() {
@@ -836,17 +828,6 @@ build_one() {
     local ASM_FLAGS=(--enable-neon)
     [[ "${ARCH}" == "x86_64" ]] && ASM_FLAGS=(--disable-asm --disable-neon)
 
-    # Metal shader cross-compilation for yadif_videotoolbox. The compiled
-    # metallib is embedded into libavfilter and loaded at runtime with
-    # newLibraryWithData:, so it must target the slice's SDK/OS. configure's
-    # default (xcrun -sdk macosx metal) yields a macOS metallib that fails to
-    # load on iOS/tvOS. AIR is arch-independent; air64 covers arm64 + x86_64.
-    local AIR_TARGET="${TARGET/${ARCH}/air64}"
-    local METAL_FLAGS=(
-        --metalcc="xcrun -sdk ${SDK} metal -target ${AIR_TARGET}"
-        --metallib="xcrun -sdk ${SDK} metallib"
-    )
-
     local WORK_DIR="${BUILD_DIR}/work/${KEY}"
     rm -rf "${WORK_DIR}"
     mkdir -p "${WORK_DIR}"
@@ -864,7 +845,6 @@ build_one() {
         --extra-cflags="${CFLAGS}" \
         --extra-ldflags="${LDFLAGS}" \
         "${ASM_FLAGS[@]}" \
-        "${METAL_FLAGS[@]}" \
         "${CONFIGURE_LINK_FLAGS[@]}" \
         "${COMMON_FLAGS[@]}" \
         2>&1 | tail -5

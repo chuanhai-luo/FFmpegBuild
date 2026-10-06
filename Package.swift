@@ -2,6 +2,7 @@
 
 import PackageDescription
 
+// Magpie's iOS frameworks include the VideoToolbox H.264 and AAC encoders.
 // The frameworks ship under an `Aether` prefix. SwiftPM target names and
 // product names are unique across the whole dependency graph, and every other
 // FFmpeg packaged for Apple platforms (FFmpegKit and its forks, MobileVLCKit,
